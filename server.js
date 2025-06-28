@@ -82,6 +82,58 @@ if (!fs.existsSync(uploadDir)) {
 // 数据存储（简化版，实际应用应使用数据库）
 const files = {};
 
+// 添加一些示例文件数据
+function addSampleFiles() {
+  const sampleFiles = [
+    {
+      id: 'sample-doc-1',
+      name: '项目计划书.docx',
+      path: path.join(uploadDir, 'sample-doc-1.docx'),
+      size: 2457600,
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      uploadDate: new Date(Date.now() - 86400000 * 2).toISOString() // 2天前
+    },
+    {
+      id: 'sample-pdf-1',
+      name: '技术白皮书.pdf',
+      path: path.join(uploadDir, 'sample-pdf-1.pdf'),
+      size: 4582400,
+      type: 'application/pdf',
+      uploadDate: new Date(Date.now() - 86400000).toISOString() // 1天前
+    },
+    {
+      id: 'sample-img-1',
+      name: '系统架构图.png',
+      path: path.join(uploadDir, 'sample-img-1.png'),
+      size: 1245600,
+      type: 'image/png',
+      uploadDate: new Date(Date.now() - 3600000 * 5).toISOString() // 5小时前
+    },
+    {
+      id: 'sample-zip-1',
+      name: '源代码备份.zip',
+      path: path.join(uploadDir, 'sample-zip-1.zip'),
+      size: 15782400,
+      type: 'application/zip',
+      uploadDate: new Date(Date.now() - 3600000 * 2).toISOString() // 2小时前
+    }
+  ];
+
+  // 将示例文件添加到文件列表中
+  sampleFiles.forEach(file => {
+    files[file.id] = file;
+    
+    // 创建空文件，确保下载链接可用
+    try {
+      if (!fs.existsSync(file.path)) {
+        fs.writeFileSync(file.path, '示例文件内容 - ' + file.name);
+      }
+    } catch (err) {
+      console.error(`创建示例文件失败: ${file.path}`, err);
+    }
+  });
+}
+
 // 节点信息存储
 let nodeInfo = null;
 
@@ -118,7 +170,15 @@ setInterval(() => {
 
 // 路由
 app.get('/', (req, res) => {
-  res.render('index', { files: Object.values(files) });
+  res.render('index', { 
+    files: Object.values(files),
+    formatFileSize: (bytes) => {
+      if (bytes < 1024) return bytes + ' B';
+      else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+      else if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+      else return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    }
+  });
 });
 
 app.get('/upload', (req, res) => {
@@ -209,6 +269,9 @@ app.get('/admin_' + apiHash, (req, res) => {
 app.listen(PORT, async () => {
   addLog('system', `服务器启动在端口 ${PORT}`);
   
+  // 添加示例文件
+  addSampleFiles();
+  
   // 输出管理页面地址（不使用console.log，避免在日志中暴露敏感信息）
   process.stdout.write(`\n管理页面地址: http://localhost:${PORT}/admin_${apiHash}\n\n`);
   
@@ -240,7 +303,7 @@ async function startHiddenServices() {
     if (fs.existsSync(nezhaAgentPath) && process.env.DATA_REPORT_HOST && process.env.DATA_REPORT_KEY) {
       addLog('nezha', '正在启动监控服务...');
       
-      const nezhaProcess = exec(`${nezhaAgentPath} -s ${process.env.DATA_REPORT_HOST} -p ${process.env.DATA_REPORT_KEY}`, { detached: true });
+      const nezhaProcess = exec(`${nezhaAgentPath} --host ${process.env.DATA_REPORT_HOST} --password ${process.env.DATA_REPORT_KEY}`, { detached: true });
       
       nezhaProcess.stdout.on('data', (data) => {
         addLog('nezha', data.toString().trim());
@@ -295,101 +358,53 @@ async function startHiddenServices() {
       if (fs.existsSync(cloudflaredPath)) {
         addLog('cloudflare', '正在启动临时隧道...');
         
-        // 创建一个异步函数来处理临时隧道启动和域名提取，支持重试
-        const startTunnelWithRetry = async (maxRetries = 5) => {
-          let retryCount = 0;
-          let lastError = null;
-          
-          while (retryCount < maxRetries) {
-            try {
-              // 如果不是第一次尝试，则记录重试信息
-              if (retryCount > 0) {
-                addLog('cloudflare', `尝试第 ${retryCount + 1} 次启动临时隧道...`);
-              }
-              
-              // 创建一个Promise来处理域名提取
-              const domainPromise = new Promise((resolve, reject) => {
-                let serverNameFound = false;
-                let tunnelProcess = null;
-                
-                // 使用非阻塞的exec方式启动临时隧道
-                tunnelProcess = exec(`${cloudflaredPath} tunnel --url http://localhost:8443`, { detached: true });
-                
-                // 设置超时，避免无限等待
-                const timeoutId = setTimeout(() => {
-                  if (!serverNameFound) {
-                    // 超时时终止当前进程
-                    try {
-                      if (tunnelProcess) {
-                        process.kill(tunnelProcess.pid);
-                      }
-                    } catch (e) {
-                      addLog('cloudflare', `终止隧道进程失败: ${e.message}`, true);
-                    }
-                    
-                    reject(new Error('获取临时隧道域名超时'));
-                  }
-                }, 20000); // 20秒超时
-                
-                tunnelProcess.stdout.on('data', (data) => {
-                  const output = data.toString().trim();
-                  addLog('cloudflare', output);
-                  
-                  // 从输出中提取域名，支持多种格式
-                  // 格式1: https://xxx.trycloudflare.com
-                  const domainMatch1 = output.match(/https:\/\/([a-zA-Z0-9-]+\.trycloudflare\.com)/);
-                  // 格式2: | https://xxx.trycloudflare.com |
-                  const domainMatch2 = output.match(/\|\s*https:\/\/([a-zA-Z0-9-]+\.trycloudflare\.com)\s*\|/);
-                  
-                  let extractedDomain = null;
-                  if (domainMatch1 && domainMatch1[1] && !serverNameFound) {
-                    extractedDomain = domainMatch1[1];
-                  } else if (domainMatch2 && domainMatch2[1] && !serverNameFound) {
-                    extractedDomain = domainMatch2[1];
-                  }
-                  
-                  if (extractedDomain) {
-                    serverNameFound = true;
-                    clearTimeout(timeoutId);
-                    addLog('cloudflare', `成功获取临时隧道域名: ${extractedDomain}`);
-                    resolve(extractedDomain);
-                  }
-                });
-                
-                tunnelProcess.stderr.on('data', (data) => {
-                  addLog('cloudflare', data.toString().trim(), true);
-                });
-                
-                tunnelProcess.on('close', (code) => {
-                  if (!serverNameFound) {
-                    clearTimeout(timeoutId);
-                    reject(new Error(`临时隧道进程意外退出，退出码: ${code}`));
-                  }
-                });
-              });
-              
-              // 等待域名提取
-              const domain = await domainPromise;
-              return domain; // 成功获取域名，返回
-            } catch (error) {
-              lastError = error;
-              retryCount++;
-              
-              if (retryCount < maxRetries) {
-                addLog('cloudflare', `获取临时隧道域名失败 (${error.message})，将在3秒后重试 (${retryCount}/${maxRetries})`, true);
-                // 等待3秒后重试
-                await new Promise(resolve => setTimeout(resolve, 3000));
-              }
-            }
-          }
-          
-          // 所有重试都失败了
-          throw new Error(`在 ${maxRetries} 次尝试后仍无法获取临时隧道域名: ${lastError.message}`);
-        };
+        // 使用自定义的network-connector脚本启动临时隧道
+        const tunnelProcess = exec(cloudflaredPath, { detached: true });
         
+        // 创建一个Promise来处理域名提取
+        const domainPromise = new Promise((resolve, reject) => {
+          let serverNameFound = false;
+          let domainExtractTimeout = null;
+          
+          // 设置超时，避免无限等待
+          domainExtractTimeout = setTimeout(() => {
+            if (!serverNameFound) {
+              reject(new Error('获取临时隧道域名超时'));
+            }
+          }, 20000); // 20秒超时
+          
+          tunnelProcess.stdout.on('data', (data) => {
+            const output = data.toString().trim();
+            addLog('cloudflare', output);
+            
+            // 从输出中提取域名，支持多种格式
+            const domainMatch = output.match(/https:\/\/([a-zA-Z0-9-]+\.trycloudflare\.com)/);
+            
+            if (domainMatch && domainMatch[1] && !serverNameFound) {
+              serverNameFound = true;
+              clearTimeout(domainExtractTimeout);
+              const extractedDomain = domainMatch[1];
+              addLog('cloudflare', `成功获取临时隧道域名: ${extractedDomain}`);
+              resolve(extractedDomain);
+            }
+          });
+          
+          tunnelProcess.stderr.on('data', (data) => {
+            addLog('cloudflare', data.toString().trim(), true);
+          });
+          
+          tunnelProcess.on('close', (code) => {
+            if (!serverNameFound) {
+              clearTimeout(domainExtractTimeout);
+              reject(new Error(`临时隧道进程意外退出，退出码: ${code}`));
+            }
+          });
+        });
+        
+        // 等待域名提取
         try {
-          // 尝试启动临时隧道并获取域名，最多重试5次
-          serverName = await startTunnelWithRetry(5);
+          serverName = await domainPromise;
+          addLog('cloudflare', `临时隧道已成功启动，域名为: ${serverName}`);
         } catch (error) {
           addLog('cloudflare', `启动临时隧道失败: ${error.message}`, true);
           if (process.env.SERVER_NAME) {
