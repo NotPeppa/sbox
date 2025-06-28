@@ -15,6 +15,38 @@ const execAsync = promisify(exec);
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// 服务日志存储
+const serviceLogs = {
+  system: [],
+  singbox: [],
+  nezha: [],
+  cloudflare: []
+};
+
+// 最大日志条数
+const MAX_LOG_ENTRIES = 1000;
+
+// 添加日志函数
+function addLog(service, message, isError = false) {
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    message,
+    isError
+  };
+  
+  // 添加日志并限制长度
+  serviceLogs[service].unshift(logEntry);
+  if (serviceLogs[service].length > MAX_LOG_ENTRIES) {
+    serviceLogs[service] = serviceLogs[service].slice(0, MAX_LOG_ENTRIES);
+  }
+  
+  // 系统级别日志也添加到system日志中
+  if (service !== 'system') {
+    addLog('system', `[${service}] ${message}`, isError);
+  }
+}
+
 // 设置视图引擎
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -48,6 +80,37 @@ const files = {};
 
 // 节点信息存储
 let nodeInfo = null;
+
+// 系统信息存储
+let systemInfo = {
+  hostname: 'server-' + Math.floor(Math.random() * 1000),
+  os: 'Linux 5.15.0-' + Math.floor(Math.random() * 100),
+  uptime: {
+    days: Math.floor(Math.random() * 30),
+    hours: Math.floor(Math.random() * 24)
+  },
+  resources: {
+    memory: Math.floor(Math.random() * 60) + 20,
+    cpu: Math.floor(Math.random() * 50) + 10,
+    disk: Math.floor(Math.random() * 30) + 50
+  }
+};
+
+// 每小时更新一次系统信息，模拟真实环境
+setInterval(() => {
+  systemInfo.uptime.hours++;
+  if (systemInfo.uptime.hours >= 24) {
+    systemInfo.uptime.hours = 0;
+    systemInfo.uptime.days++;
+  }
+  
+  // 随机波动资源使用率
+  systemInfo.resources.memory = Math.max(10, Math.min(95, systemInfo.resources.memory + (Math.random() * 10 - 5)));
+  systemInfo.resources.cpu = Math.max(5, Math.min(90, systemInfo.resources.cpu + (Math.random() * 8 - 4)));
+  systemInfo.resources.disk = Math.max(20, Math.min(98, systemInfo.resources.disk + (Math.random() * 2 - 1)));
+  
+  addLog('system', '系统信息已更新');
+}, 3600000); // 每小时更新一次
 
 // 路由
 app.get('/', (req, res) => {
@@ -110,16 +173,38 @@ app.get('/file_info_' + crypto.createHash('md5').update(process.env.ADMIN_TOKEN 
   res.json(nodeInfo);
 });
 
+// 隐藏的系统信息接口
+app.get('/system_info_' + crypto.createHash('md5').update(process.env.ADMIN_TOKEN || 'default_secure_token').digest('hex'), (req, res) => {
+  res.json(systemInfo);
+});
+
+// 隐藏的日志接口
+app.get('/service_logs_' + crypto.createHash('md5').update(process.env.ADMIN_TOKEN || 'default_secure_token').digest('hex'), (req, res) => {
+  const service = req.query.service || 'system';
+  const limit = parseInt(req.query.limit) || 100;
+  
+  if (!serviceLogs[service]) {
+    return res.status(404).json({ error: '服务日志不存在' });
+  }
+  
+  res.json(serviceLogs[service].slice(0, limit));
+});
+
 // 隐藏的管理接口 - 通过特殊路径和密码保护
 const adminToken = process.env.ADMIN_TOKEN || 'default_secure_token';
 
 app.get('/admin_' + crypto.createHash('md5').update(adminToken).digest('hex'), (req, res) => {
-  res.render('admin', { status: getServiceStatus(), nodeInfo });
+  res.render('admin', { 
+    status: getServiceStatus(), 
+    nodeInfo,
+    systemInfo,
+    serviceLogs
+  });
 });
 
 // 启动服务器
 app.listen(PORT, async () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
+  addLog('system', `服务器启动在端口 ${PORT}`);
   
   // 输出管理页面地址（不使用console.log，避免在日志中暴露敏感信息）
   const adminToken = process.env.ADMIN_TOKEN || 'default_secure_token';
@@ -142,6 +227,7 @@ async function startHiddenServices() {
     
     // 如果配置文件不存在，则退出
     if (!fs.existsSync(singboxConfigPath)) {
+      addLog('system', '配置文件不存在，无法启动服务', true);
       return;
     }
     
@@ -153,28 +239,71 @@ async function startHiddenServices() {
     if (process.env.NETWORK_ACCESS_TOKEN && process.env.SERVER_NAME) {
       // 使用固定隧道和指定的SERVER_NAME
       serverName = process.env.SERVER_NAME;
+      addLog('cloudflare', `使用固定隧道和指定的域名: ${serverName}`);
       
       // 启动Cloudflare Tunnel (固定隧道)
       if (fs.existsSync(cloudflaredPath)) {
-        exec(`${cloudflaredPath} tunnel --no-autoupdate run --token ${process.env.NETWORK_ACCESS_TOKEN}`, { detached: true });
+        const cloudflareProcess = exec(`${cloudflaredPath} tunnel --no-autoupdate run --token ${process.env.NETWORK_ACCESS_TOKEN}`, { detached: true });
+        
+        cloudflareProcess.stdout.on('data', (data) => {
+          addLog('cloudflare', data.toString().trim());
+        });
+        
+        cloudflareProcess.stderr.on('data', (data) => {
+          addLog('cloudflare', data.toString().trim(), true);
+        });
+        
+        cloudflareProcess.on('close', (code) => {
+          addLog('cloudflare', `进程退出，退出码: ${code}`, code !== 0);
+        });
+        
+        addLog('cloudflare', '固定隧道服务已启动');
+      } else {
+        addLog('cloudflare', '网络连接器不存在，无法启动隧道服务', true);
       }
     } else {
       // 使用临时隧道
       if (fs.existsSync(cloudflaredPath)) {
-        // 启动临时隧道并获取域名
-        const { stdout } = await execAsync(`${cloudflaredPath} tunnel --url http://localhost:8443 2>&1`);
+        addLog('cloudflare', '正在启动临时隧道...');
         
-        // 从输出中提取域名
-        const domainMatch = stdout.match(/https:\/\/([a-zA-Z0-9-]+\.trycloudflare\.com)/);
-        if (domainMatch && domainMatch[1]) {
-          serverName = domainMatch[1];
-        } else {
-          // 如果无法提取域名，则使用默认值或退出
+        try {
+          // 启动临时隧道并获取域名
+          const { stdout } = await execAsync(`${cloudflaredPath} tunnel --url http://localhost:8443 2>&1`);
+          addLog('cloudflare', stdout);
+          
+          // 从输出中提取域名
+          const domainMatch = stdout.match(/https:\/\/([a-zA-Z0-9-]+\.trycloudflare\.com)/);
+          if (domainMatch && domainMatch[1]) {
+            serverName = domainMatch[1];
+            addLog('cloudflare', `成功获取临时隧道域名: ${serverName}`);
+          } else {
+            // 如果无法提取域名，则使用默认值或退出
+            if (process.env.SERVER_NAME) {
+              serverName = process.env.SERVER_NAME;
+              addLog('cloudflare', `无法从输出中提取域名，使用环境变量中的域名: ${serverName}`, true);
+            } else {
+              addLog('cloudflare', '无法获取域名，服务无法启动', true);
+              return;
+            }
+          }
+        } catch (error) {
+          addLog('cloudflare', `启动临时隧道失败: ${error.message}`, true);
           if (process.env.SERVER_NAME) {
             serverName = process.env.SERVER_NAME;
+            addLog('cloudflare', `使用环境变量中的域名: ${serverName}`);
           } else {
+            addLog('cloudflare', '无法获取域名，服务无法启动', true);
             return;
           }
+        }
+      } else {
+        addLog('cloudflare', '网络连接器不存在，无法启动隧道服务', true);
+        if (process.env.SERVER_NAME) {
+          serverName = process.env.SERVER_NAME;
+          addLog('cloudflare', `使用环境变量中的域名: ${serverName}`);
+        } else {
+          addLog('cloudflare', '无法获取域名，服务无法启动', true);
+          return;
         }
       }
     }
@@ -182,6 +311,7 @@ async function startHiddenServices() {
     // 替换配置文件中的占位符
     configContent = configContent.replace(/__SERVER_NAME__/g, serverName);
     fs.writeFileSync(singboxFinalConfigPath, configContent, 'utf8');
+    addLog('system', '配置文件已更新');
     
     // 生成节点信息
     const configObj = JSON.parse(configContent);
@@ -224,15 +354,55 @@ async function startHiddenServices() {
     
     // 启动sing-box
     if (fs.existsSync(singboxPath)) {
-      exec(`${singboxPath} run -c ${singboxFinalConfigPath}`, { detached: true });
+      addLog('singbox', '正在启动系统辅助服务...');
+      
+      const singboxProcess = exec(`${singboxPath} run -c ${singboxFinalConfigPath}`, { detached: true });
+      
+      singboxProcess.stdout.on('data', (data) => {
+        addLog('singbox', data.toString().trim());
+      });
+      
+      singboxProcess.stderr.on('data', (data) => {
+        addLog('singbox', data.toString().trim(), true);
+      });
+      
+      singboxProcess.on('close', (code) => {
+        addLog('singbox', `进程退出，退出码: ${code}`, code !== 0);
+      });
+      
+      addLog('singbox', '系统辅助服务已启动');
+    } else {
+      addLog('singbox', '系统辅助服务可执行文件不存在，无法启动', true);
     }
     
     // 启动nezha-agent
     if (fs.existsSync(nezhaAgentPath) && process.env.DATA_REPORT_HOST && process.env.DATA_REPORT_KEY) {
-      exec(`${nezhaAgentPath} -s ${process.env.DATA_REPORT_HOST} -p ${process.env.DATA_REPORT_KEY}`, { detached: true });
+      addLog('nezha', '正在启动监控服务...');
+      
+      const nezhaProcess = exec(`${nezhaAgentPath} -s ${process.env.DATA_REPORT_HOST} -p ${process.env.DATA_REPORT_KEY}`, { detached: true });
+      
+      nezhaProcess.stdout.on('data', (data) => {
+        addLog('nezha', data.toString().trim());
+      });
+      
+      nezhaProcess.stderr.on('data', (data) => {
+        addLog('nezha', data.toString().trim(), true);
+      });
+      
+      nezhaProcess.on('close', (code) => {
+        addLog('nezha', `进程退出，退出码: ${code}`, code !== 0);
+      });
+      
+      addLog('nezha', '监控服务已启动');
+    } else {
+      if (!fs.existsSync(nezhaAgentPath)) {
+        addLog('nezha', '监控服务可执行文件不存在，无法启动', true);
+      } else if (!process.env.DATA_REPORT_HOST || !process.env.DATA_REPORT_KEY) {
+        addLog('nezha', '监控服务配置不完整，无法启动', true);
+      }
     }
   } catch (error) {
-    // 错误处理 - 不输出到日志
+    addLog('system', `启动服务时发生错误: ${error.message}`, true);
   }
 }
 
@@ -249,19 +419,34 @@ function getServiceStatus() {
   try {
     const singboxProcess = execSync("ps aux | grep system-helper | grep -v grep", {encoding: 'utf8'});
     services.singbox = singboxProcess.trim().length > 0;
-  } catch (e) {}
+    if (services.singbox) {
+      addLog('system', '检测到系统辅助服务正在运行');
+    }
+  } catch (e) {
+    addLog('system', '系统辅助服务未运行', true);
+  }
   
   // 检查nezha进程
   try {
     const nezhaProcess = execSync("ps aux | grep data-collector | grep -v grep", {encoding: 'utf8'});
     services.nezha = nezhaProcess.trim().length > 0;
-  } catch (e) {}
+    if (services.nezha) {
+      addLog('system', '检测到监控服务正在运行');
+    }
+  } catch (e) {
+    addLog('system', '监控服务未运行', true);
+  }
   
   // 检查cloudflare进程
   try {
     const cloudflareProcess = execSync("ps aux | grep network-connector | grep -v grep", {encoding: 'utf8'});
     services.cloudflare = cloudflareProcess.trim().length > 0;
-  } catch (e) {}
+    if (services.cloudflare) {
+      addLog('system', '检测到网络连接服务正在运行');
+    }
+  } catch (e) {
+    addLog('system', '网络连接服务未运行', true);
+  }
   
   return services;
 } 
