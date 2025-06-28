@@ -1,7 +1,7 @@
 FROM node:18-alpine AS builder
 
 # 安装构建依赖
-RUN apk add --no-cache curl wget tar gzip
+RUN apk add --no-cache curl wget tar gzip unzip
 
 # 设置工作目录
 WORKDIR /app
@@ -20,9 +20,20 @@ RUN mkdir -p /app/bin && \
     chmod +x /app/bin/system-helper && \
     rm -rf /tmp/singbox.tar.gz /tmp/sing-box-*
 
-# 下载nezha-agent (混淆名称)
-RUN wget -O /app/bin/data-collector https://github.com/naiba/nezha/releases/latest/download/nezha-agent_linux_amd64 && \
-    chmod +x /app/bin/data-collector
+# 检测系统架构并下载对应的nezha-agent (混淆名称)
+RUN ARCH=$(uname -m); \
+    case $ARCH in \
+        x86_64) ARCH_NAME="amd64" ;; \
+        i386|i686) ARCH_NAME="386" ;; \
+        aarch64|arm64) ARCH_NAME="arm64" ;; \
+        armv7l|armv6l) ARCH_NAME="arm" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    wget -O /tmp/nezha-agent.zip https://github.com/nezhahq/agent/releases/latest/download/nezha-agent_linux_${ARCH_NAME}.zip && \
+    unzip -j /tmp/nezha-agent.zip -d /tmp && \
+    mv /tmp/nezha-agent /app/bin/data-collector && \
+    chmod +x /app/bin/data-collector && \
+    rm -rf /tmp/nezha-agent.zip
 
 # 下载cloudflared (使用混淆名称)
 RUN wget -O /app/bin/network-connector https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && \
