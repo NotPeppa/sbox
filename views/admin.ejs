@@ -351,7 +351,7 @@
   <script>
     // 获取系统信息
     function updateSystemInfo() {
-      fetch('/system_info_<%= crypto.createHash("md5").update(process.env.ADMIN_TOKEN || "default_secure_token").digest("hex") %>')
+      fetch('/system_info_<%= apiHash %>')
         .then(response => response.json())
         .then(data => {
           // 更新服务器信息
@@ -372,7 +372,7 @@
     
     // 获取服务日志
     function updateServiceLogs(service) {
-      fetch('/service_logs_<%= crypto.createHash("md5").update(process.env.ADMIN_TOKEN || "default_secure_token").digest("hex") %>?service=' + service)
+      fetch('/service_logs_<%= apiHash %>?service=' + service)
         .then(response => response.json())
         .then(logs => {
           const logsContainer = document.getElementById(service + '-logs');
@@ -438,7 +438,7 @@
       const copyAllBtn = document.getElementById('copy-all-btn');
       if (copyAllBtn) {
         copyAllBtn.addEventListener('click', function() {
-          const nodeInfo = <%- JSON.stringify(nodeInfo) %>;
+          const nodeInfo = <%- JSON.stringify(nodeInfo || {}) %>;
           let allInfo = `服务器域名: ${nodeInfo.domain}\n\n`;
           
           nodeInfo.inbounds.forEach(inbound => {

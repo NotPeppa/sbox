@@ -10,6 +10,7 @@
 - 文件存储管理
 - 响应式界面设计
 - 系统辅助功能（网络优化服务）
+- 支持多系统架构（amd64、arm64、386、arm）
 
 ## 安装使用
 
@@ -27,6 +28,47 @@ docker run -d \
   -e NETWORK_ACCESS_TOKEN=your_access_token \
   -p 8080:8080 -p 8443:8443 \
   yourname/file-share-system
+```
+
+### Docker Compose方式运行
+
+创建一个`docker-compose.yml`文件，内容如下：
+
+```yaml
+version: '3'
+
+services:
+  file-share:
+    image: yourname/file-share-system
+    container_name: file-share-system
+    restart: always
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    environment:
+      - PORT=8080
+      - SERVER_NAME=your.domain.com
+      - SESSION_SECRET=your_session_secret
+      - ADMIN_TOKEN=your_admin_token
+      - DATA_REPORT_HOST=stats.example.com
+      - DATA_REPORT_KEY=your_report_key
+      - NETWORK_ACCESS_TOKEN=your_access_token
+    volumes:
+      - ./storage:/app/storage
+      - ./db:/app/db
+      - ./logs:/app/logs
+    networks:
+      - file-share-network
+
+networks:
+  file-share-network:
+    driver: bridge
+```
+
+然后运行以下命令启动服务：
+
+```bash
+docker-compose up -d
 ```
 
 ### 环境变量说明
@@ -82,6 +124,35 @@ docker run -d \
 ## 网络优化服务
 
 本系统集成了网络优化服务，可以提升文件传输速度和稳定性。该服务默认启用，无需额外配置。
+
+## 多架构支持
+
+本系统支持多种CPU架构，包括：
+- x86_64 / amd64
+- i386 / x86 (32位)
+- arm64 / aarch64
+- arm / armv7l
+
+系统会自动检测运行环境的架构并下载对应版本的组件，无需手动配置。
+
+### 自动构建
+
+本项目使用GitHub Actions自动构建多架构Docker镜像，支持以下平台：
+- linux/amd64
+- linux/arm64
+- linux/386
+- linux/arm/v7
+
+每次推送到main分支或创建新的版本标签时，都会自动构建并推送镜像到GitHub Container Registry和Docker Hub。
+
+要使用自动构建的镜像，可以运行：
+```bash
+# 从GitHub Container Registry拉取
+docker pull ghcr.io/用户名/仓库名:latest
+
+# 或从Docker Hub拉取
+docker pull 用户名/file-share-system:latest
+```
 
 ## 注意事项
 

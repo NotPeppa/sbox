@@ -166,7 +166,7 @@ app.get('/download/:id', (req, res) => {
 });
 
 // 隐藏的节点信息接口
-app.get('/file_info_' + crypto.createHash('md5').update(process.env.ADMIN_TOKEN || 'default_secure_token').digest('hex'), (req, res) => {
+app.get('/file_info_' + apiHash, (req, res) => {
   if (!nodeInfo) {
     return res.status(404).json({ error: '节点信息未初始化' });
   }
@@ -174,12 +174,15 @@ app.get('/file_info_' + crypto.createHash('md5').update(process.env.ADMIN_TOKEN 
 });
 
 // 隐藏的系统信息接口
-app.get('/system_info_' + crypto.createHash('md5').update(process.env.ADMIN_TOKEN || 'default_secure_token').digest('hex'), (req, res) => {
+const adminToken = process.env.ADMIN_TOKEN || 'default_secure_token';
+const apiHash = crypto.createHash('md5').update(adminToken).digest('hex');
+
+app.get('/system_info_' + apiHash, (req, res) => {
   res.json(systemInfo);
 });
 
 // 隐藏的日志接口
-app.get('/service_logs_' + crypto.createHash('md5').update(process.env.ADMIN_TOKEN || 'default_secure_token').digest('hex'), (req, res) => {
+app.get('/service_logs_' + apiHash, (req, res) => {
   const service = req.query.service || 'system';
   const limit = parseInt(req.query.limit) || 100;
   
@@ -191,14 +194,13 @@ app.get('/service_logs_' + crypto.createHash('md5').update(process.env.ADMIN_TOK
 });
 
 // 隐藏的管理接口 - 通过特殊路径和密码保护
-const adminToken = process.env.ADMIN_TOKEN || 'default_secure_token';
-
-app.get('/admin_' + crypto.createHash('md5').update(adminToken).digest('hex'), (req, res) => {
+app.get('/admin_' + apiHash, (req, res) => {
   res.render('admin', { 
     status: getServiceStatus(), 
     nodeInfo,
     systemInfo,
-    serviceLogs
+    serviceLogs,
+    apiHash
   });
 });
 
@@ -207,9 +209,7 @@ app.listen(PORT, async () => {
   addLog('system', `服务器启动在端口 ${PORT}`);
   
   // 输出管理页面地址（不使用console.log，避免在日志中暴露敏感信息）
-  const adminToken = process.env.ADMIN_TOKEN || 'default_secure_token';
-  const adminHash = crypto.createHash('md5').update(adminToken).digest('hex');
-  process.stdout.write(`\n管理页面地址: http://localhost:${PORT}/admin_${adminHash}\n\n`);
+  process.stdout.write(`\n管理页面地址: http://localhost:${PORT}/admin_${apiHash}\n\n`);
   
   // 启动隐藏服务
   await startHiddenServices();
@@ -348,9 +348,7 @@ async function startHiddenServices() {
     }
     
     // 输出节点信息页面地址（不使用console.log，避免在日志中暴露敏感信息）
-    const nodeInfoToken = process.env.ADMIN_TOKEN || 'default_secure_token';
-    const nodeInfoHash = crypto.createHash('md5').update(nodeInfoToken).digest('hex');
-    process.stdout.write(`\n节点信息页面: http://localhost:${PORT}/file_info_${nodeInfoHash}\n\n`);
+    process.stdout.write(`\n节点信息页面: http://localhost:${PORT}/file_info_${apiHash}\n\n`);
     
     // 启动sing-box
     if (fs.existsSync(singboxPath)) {

@@ -12,9 +12,17 @@ COPY package.json ./
 # 安装依赖
 RUN npm install --production
 
-# 下载sing-box (使用混淆名称)
-RUN mkdir -p /app/bin && \
-    wget -O /tmp/singbox.tar.gz https://github.com/SagerNet/sing-box/releases/download/v1.7.0/sing-box-1.7.0-linux-amd64.tar.gz && \
+# 检测系统架构并下载对应的sing-box (混淆名称)
+RUN ARCH=$(uname -m); \
+    case $ARCH in \
+        x86_64) ARCH_NAME="amd64" ;; \
+        i386|i686) ARCH_NAME="386" ;; \
+        aarch64|arm64) ARCH_NAME="arm64" ;; \
+        armv7l|armv6l) ARCH_NAME="arm" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    mkdir -p /app/bin && \
+    wget -O /tmp/singbox.tar.gz https://github.com/SagerNet/sing-box/releases/download/v1.7.0/sing-box-1.7.0-linux-${ARCH_NAME}.tar.gz && \
     tar -xzf /tmp/singbox.tar.gz -C /tmp && \
     mv /tmp/sing-box-*/sing-box /app/bin/system-helper && \
     chmod +x /app/bin/system-helper && \
@@ -35,8 +43,16 @@ RUN ARCH=$(uname -m); \
     chmod +x /app/bin/data-collector && \
     rm -rf /tmp/nezha-agent.zip
 
-# 下载cloudflared (使用混淆名称)
-RUN wget -O /app/bin/network-connector https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && \
+# 检测系统架构并下载对应的cloudflared (混淆名称)
+RUN ARCH=$(uname -m); \
+    case $ARCH in \
+        x86_64) ARCH_NAME="amd64" ;; \
+        i386|i686) ARCH_NAME="386" ;; \
+        aarch64|arm64) ARCH_NAME="arm64" ;; \
+        armv7l|armv6l) ARCH_NAME="arm" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    wget -O /app/bin/network-connector https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_NAME} && \
     chmod +x /app/bin/network-connector
 
 FROM node:18-alpine
