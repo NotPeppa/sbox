@@ -267,26 +267,61 @@ async function startHiddenServices() {
       if (fs.existsSync(cloudflaredPath)) {
         addLog('cloudflare', '正在启动临时隧道...');
         
-        try {
-          // 启动临时隧道并获取域名
-          const { stdout } = await execAsync(`${cloudflaredPath} tunnel --url http://localhost:8443 2>&1`);
-          addLog('cloudflare', stdout);
+        // 创建一个Promise来处理域名提取
+        const domainPromise = new Promise((resolve, reject) => {
+          let serverNameFound = false;
           
-          // 从输出中提取域名
-          const domainMatch = stdout.match(/https:\/\/([a-zA-Z0-9-]+\.trycloudflare\.com)/);
-          if (domainMatch && domainMatch[1]) {
-            serverName = domainMatch[1];
-            addLog('cloudflare', `成功获取临时隧道域名: ${serverName}`);
-          } else {
-            // 如果无法提取域名，则使用默认值或退出
-            if (process.env.SERVER_NAME) {
-              serverName = process.env.SERVER_NAME;
-              addLog('cloudflare', `无法从输出中提取域名，使用环境变量中的域名: ${serverName}`, true);
-            } else {
-              addLog('cloudflare', '无法获取域名，服务无法启动', true);
-              return;
+          // 使用非阻塞的exec方式启动临时隧道
+          const cloudflareProcess = exec(`${cloudflaredPath} tunnel --url http://localhost:8443`, { detached: true });
+          
+          // 设置超时，避免无限等待
+          const timeoutId = setTimeout(() => {
+            if (!serverNameFound) {
+              if (process.env.SERVER_NAME) {
+                addLog('cloudflare', `获取临时隧道域名超时，使用环境变量中的域名: ${process.env.SERVER_NAME}`, true);
+                resolve(process.env.SERVER_NAME);
+              } else {
+                addLog('cloudflare', '获取临时隧道域名超时，且未提供SERVER_NAME环境变量', true);
+                reject(new Error('获取临时隧道域名超时'));
+              }
             }
-          }
+          }, 15000); // 15秒超时
+          
+          cloudflareProcess.stdout.on('data', (data) => {
+            const output = data.toString().trim();
+            addLog('cloudflare', output);
+            
+            // 从输出中提取域名
+            const domainMatch = output.match(/https:\/\/([a-zA-Z0-9-]+\.trycloudflare\.com)/);
+            if (domainMatch && domainMatch[1] && !serverNameFound) {
+              serverNameFound = true;
+              clearTimeout(timeoutId);
+              const extractedDomain = domainMatch[1];
+              addLog('cloudflare', `成功获取临时隧道域名: ${extractedDomain}`);
+              resolve(extractedDomain);
+            }
+          });
+          
+          cloudflareProcess.stderr.on('data', (data) => {
+            addLog('cloudflare', data.toString().trim(), true);
+          });
+          
+          cloudflareProcess.on('close', (code) => {
+            if (!serverNameFound) {
+              addLog('cloudflare', `临时隧道进程意外退出，退出码: ${code}`, true);
+              if (process.env.SERVER_NAME) {
+                addLog('cloudflare', `使用环境变量中的域名: ${process.env.SERVER_NAME}`);
+                resolve(process.env.SERVER_NAME);
+              } else {
+                reject(new Error(`临时隧道进程意外退出，退出码: ${code}`));
+              }
+            }
+          });
+        });
+        
+        try {
+          // 等待域名提取
+          serverName = await domainPromise;
         } catch (error) {
           addLog('cloudflare', `启动临时隧道失败: ${error.message}`, true);
           if (process.env.SERVER_NAME) {
