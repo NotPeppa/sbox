@@ -1,0 +1,58 @@
+# 工作流名称
+name: Build and Push Docker Image to GHCR
+
+# 触发条件：在 push 到 main 分支时触发
+on:
+  push:
+    branches: [ "main" ]
+
+# 环境变量，用于设置镜像名称
+env:
+  # ghcr.io/OWNER/IMAGE_NAME
+  # ${{ github.repository }} 会自动解析为 NotPeppa/sbox
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+# 工作流中的任务
+jobs:
+  # 定义一个名为 build-and-push 的任务
+  build-and-push:
+    # 指定运行环境为最新的 Ubuntu
+    runs-on: ubuntu-latest
+
+    # 为此任务授予权限
+    permissions:
+      contents: read       # 允许读取仓库内容 (用于 checkout)
+      packages: write      # 允许写入 GitHub Packages (用于推送镜像)
+
+    # 任务执行步骤
+    steps:
+      # 步骤1: 检出代码
+      # 使用官方的 checkout action
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 步骤2: 登录到 GitHub Container Registry (GHCR)
+      # 使用官方的 docker/login-action
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          # ${{ github.actor }} 是触发工作流的用户名
+          # ${{ secrets.GITHUB_TOKEN }} 是 GitHub 自动生成的令牌，具有在此仓库中推送包的权限
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 步骤3: 构建并推送 Docker 镜像
+      # 使用官方的 docker/build-push-action
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .               # Docker build 的上下文路径 (仓库根目录)
+          push: true               # 设置为 true 以推送镜像
+          # 为镜像打上标签
+          # ${{ env.IMAGE_NAME }} 是 ghcr.io/notpeppa/sbox
+          # :latest 是标签名，满足您的要求
+          tags: ${{ env.IMAGE_NAME }}:latest
+          # 开启 buildkit 以获得更快的构建速度和缓存功能
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
