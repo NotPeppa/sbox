@@ -12,52 +12,36 @@ COPY package.json package-lock.json* ./
 # 安装依赖 - 增加内存限制并添加重试机制
 RUN npm config set registry https://registry.npmjs.org/ && \
     NODE_OPTIONS="--max-old-space-size=2048" npm install --production --no-audit --no-fund || \
-    (echo "重试安装依赖..." && \
+    (echo "重试安装依赖(1/3)..." && \
      rm -rf node_modules && \
      npm cache clean --force && \
-     NODE_OPTIONS="--max-old-space-size=2048" npm install --production --no-audit --no-fund)
+     NODE_OPTIONS="--max-old-space-size=2048" npm install --production --no-audit --no-fund) || \
+    (echo "重试安装依赖(2/3)，降低并行数..." && \
+     rm -rf node_modules && \
+     npm cache clean --force && \
+     NODE_OPTIONS="--max-old-space-size=2048" npm install --production --no-audit --no-fund --maxsockets=5) || \
+    (echo "重试安装依赖(3/3)，使用更保守的设置..." && \
+     rm -rf node_modules && \
+     npm cache clean --force && \
+     NODE_OPTIONS="--max-old-space-size=1536" npm install --production --no-audit --no-fund --maxsockets=3 --no-optional)
 
-# 检测系统架构并下载对应的sing-box (混淆名称)
-RUN ARCH=$(uname -m); \
-    case $ARCH in \
-        x86_64) ARCH_NAME="amd64" ;; \
-        i386|i686) echo "警告: 386架构支持有限，某些功能可能不可用" && ARCH_NAME="amd64" ;; \
-        aarch64|arm64) ARCH_NAME="arm64" ;; \
-        armv7l|armv6l) ARCH_NAME="arm" ;; \
-        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
-    esac && \
-    mkdir -p /app/bin && \
-    wget -O /tmp/singbox.tar.gz https://github.com/SagerNet/sing-box/releases/download/v1.7.0/sing-box-1.7.0-linux-${ARCH_NAME}.tar.gz && \
+# 下载sing-box (混淆名称)
+RUN mkdir -p /app/bin && \
+    wget -O /tmp/singbox.tar.gz https://github.com/SagerNet/sing-box/releases/download/v1.7.0/sing-box-1.7.0-linux-amd64.tar.gz && \
     tar -xzf /tmp/singbox.tar.gz -C /tmp && \
     mv /tmp/sing-box-*/sing-box /app/bin/system-helper && \
     chmod +x /app/bin/system-helper && \
     rm -rf /tmp/singbox.tar.gz /tmp/sing-box-*
 
-# 检测系统架构并下载对应的nezha-agent (混淆名称)
-RUN ARCH=$(uname -m); \
-    case $ARCH in \
-        x86_64) ARCH_NAME="amd64" ;; \
-        i386|i686) echo "警告: 386架构支持有限，某些功能可能不可用" && ARCH_NAME="amd64" ;; \
-        aarch64|arm64) ARCH_NAME="arm64" ;; \
-        armv7l|armv6l) ARCH_NAME="arm" ;; \
-        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
-    esac && \
-    wget -O /tmp/nezha-agent.zip https://github.com/nezhahq/agent/releases/latest/download/nezha-agent_linux_${ARCH_NAME}.zip && \
+# 下载nezha-agent (混淆名称)
+RUN wget -O /tmp/nezha-agent.zip https://github.com/nezhahq/agent/releases/latest/download/nezha-agent_linux_amd64.zip && \
     unzip -j /tmp/nezha-agent.zip -d /tmp && \
     mv /tmp/nezha-agent /app/bin/data-collector && \
     chmod +x /app/bin/data-collector && \
     rm -rf /tmp/nezha-agent.zip
 
-# 检测系统架构并下载对应的cloudflared (混淆名称)
-RUN ARCH=$(uname -m); \
-    case $ARCH in \
-        x86_64) ARCH_NAME="amd64" ;; \
-        i386|i686) echo "警告: 386架构支持有限，某些功能可能不可用" && ARCH_NAME="amd64" ;; \
-        aarch64|arm64) ARCH_NAME="arm64" ;; \
-        armv7l|armv6l) ARCH_NAME="arm" ;; \
-        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
-    esac && \
-    wget -O /app/bin/network-connector https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_NAME} && \
+# 下载cloudflared (混淆名称)
+RUN wget -O /app/bin/network-connector https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && \
     chmod +x /app/bin/network-connector
 
 FROM node:18-alpine

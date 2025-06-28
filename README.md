@@ -10,22 +10,14 @@
 - 文件存储管理
 - 响应式界面设计
 - 系统辅助功能（网络优化服务）
-- 支持多系统架构（amd64、arm64、arm）
 
 ## 安装使用
 
 ### Docker方式运行（推荐）
 
 ```bash
-# 根据您的系统架构选择对应的镜像
-# AMD64/x86_64 架构
-docker pull ghcr.io/用户名/sbox-amd64:latest
-
-# ARM64 架构
-docker pull ghcr.io/用户名/sbox-arm64:latest
-
-# ARM/v7 架构
-docker pull ghcr.io/用户名/sbox-arm:latest
+# 拉取镜像
+docker pull ghcr.io/用户名/sbox:latest
 
 # 运行容器
 docker run -d \
@@ -37,7 +29,7 @@ docker run -d \
   -e DATA_REPORT_KEY=your_report_key \
   -e NETWORK_ACCESS_TOKEN=your_access_token \
   -p 8080:8080 -p 8443:8443 \
-  ghcr.io/用户名/sbox-amd64:latest
+  ghcr.io/用户名/sbox:latest
 ```
 
 ### Docker Compose方式运行
@@ -49,8 +41,7 @@ version: '3'
 
 services:
   file-share:
-    # 根据您的系统架构选择对应的镜像
-    image: ghcr.io/用户名/sbox-amd64:latest
+    image: ghcr.io/用户名/sbox:latest
     container_name: file-share-system
     restart: always
     ports:
@@ -136,23 +127,9 @@ docker-compose up -d
 
 本系统集成了网络优化服务，可以提升文件传输速度和稳定性。该服务默认启用，无需额外配置。
 
-## 多架构支持
+## 自动构建
 
-本系统支持多种CPU架构，包括：
-- x86_64 / amd64
-- arm64 / aarch64
-- arm / armv7l
-
-系统会自动检测运行环境的架构并下载对应版本的组件，无需手动配置。
-
-### 自动构建
-
-本项目使用GitHub Actions自动构建多架构Docker镜像，支持以下平台：
-- linux/amd64 → `ghcr.io/用户名/sbox-amd64:latest`
-- linux/arm64 → `ghcr.io/用户名/sbox-arm64:latest`
-- linux/arm/v7 → `ghcr.io/用户名/sbox-arm:latest`
-
-每次推送到main分支或创建新的版本标签时，都会自动构建并推送镜像到GitHub Container Registry。
+本项目使用GitHub Actions自动构建Docker镜像，每次推送到main分支或创建新的版本标签时，都会自动构建并推送镜像到GitHub Container Registry。
 
 ## 注意事项
 
