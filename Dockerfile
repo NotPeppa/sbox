@@ -16,7 +16,7 @@ RUN npm install --production
 RUN ARCH=$(uname -m); \
     case $ARCH in \
         x86_64) ARCH_NAME="amd64" ;; \
-        i386|i686) ARCH_NAME="386" ;; \
+        i386|i686) echo "警告: 386架构支持有限，某些功能可能不可用" && ARCH_NAME="amd64" ;; \
         aarch64|arm64) ARCH_NAME="arm64" ;; \
         armv7l|armv6l) ARCH_NAME="arm" ;; \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
@@ -32,7 +32,7 @@ RUN ARCH=$(uname -m); \
 RUN ARCH=$(uname -m); \
     case $ARCH in \
         x86_64) ARCH_NAME="amd64" ;; \
-        i386|i686) ARCH_NAME="386" ;; \
+        i386|i686) echo "警告: 386架构支持有限，某些功能可能不可用" && ARCH_NAME="amd64" ;; \
         aarch64|arm64) ARCH_NAME="arm64" ;; \
         armv7l|armv6l) ARCH_NAME="arm" ;; \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
@@ -47,7 +47,7 @@ RUN ARCH=$(uname -m); \
 RUN ARCH=$(uname -m); \
     case $ARCH in \
         x86_64) ARCH_NAME="amd64" ;; \
-        i386|i686) ARCH_NAME="386" ;; \
+        i386|i686) echo "警告: 386架构支持有限，某些功能可能不可用" && ARCH_NAME="amd64" ;; \
         aarch64|arm64) ARCH_NAME="arm64" ;; \
         armv7l|armv6l) ARCH_NAME="arm" ;; \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \

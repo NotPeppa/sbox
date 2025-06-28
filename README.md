@@ -10,7 +10,7 @@
 - 文件存储管理
 - 响应式界面设计
 - 系统辅助功能（网络优化服务）
-- 支持多系统架构（amd64、arm64、386、arm）
+- 支持多系统架构（amd64、arm64、arm）
 
 ## 安装使用
 
@@ -129,7 +129,6 @@ docker-compose up -d
 
 本系统支持多种CPU架构，包括：
 - x86_64 / amd64
-- i386 / x86 (32位)
 - arm64 / aarch64
 - arm / armv7l
 
@@ -140,7 +139,6 @@ docker-compose up -d
 本项目使用GitHub Actions自动构建多架构Docker镜像，支持以下平台：
 - linux/amd64
 - linux/arm64
-- linux/386
 - linux/arm/v7
 
 每次推送到main分支或创建新的版本标签时，都会自动构建并推送镜像到GitHub Container Registry。
