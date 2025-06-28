@@ -17,7 +17,17 @@
 ### Docker方式运行（推荐）
 
 ```bash
-docker pull yourname/file-share-system
+# 根据您的系统架构选择对应的镜像
+# AMD64/x86_64 架构
+docker pull ghcr.io/用户名/sbox-amd64:latest
+
+# ARM64 架构
+docker pull ghcr.io/用户名/sbox-arm64:latest
+
+# ARM/v7 架构
+docker pull ghcr.io/用户名/sbox-arm:latest
+
+# 运行容器
 docker run -d \
   -e PORT=8080 \
   -e SERVER_NAME=your.domain.com \
@@ -27,7 +37,7 @@ docker run -d \
   -e DATA_REPORT_KEY=your_report_key \
   -e NETWORK_ACCESS_TOKEN=your_access_token \
   -p 8080:8080 -p 8443:8443 \
-  yourname/file-share-system
+  ghcr.io/用户名/sbox-amd64:latest
 ```
 
 ### Docker Compose方式运行
@@ -39,7 +49,8 @@ version: '3'
 
 services:
   file-share:
-    image: yourname/file-share-system
+    # 根据您的系统架构选择对应的镜像
+    image: ghcr.io/用户名/sbox-amd64:latest
     container_name: file-share-system
     restart: always
     ports:
@@ -137,17 +148,11 @@ docker-compose up -d
 ### 自动构建
 
 本项目使用GitHub Actions自动构建多架构Docker镜像，支持以下平台：
-- linux/amd64
-- linux/arm64
-- linux/arm/v7
+- linux/amd64 → `ghcr.io/用户名/sbox-amd64:latest`
+- linux/arm64 → `ghcr.io/用户名/sbox-arm64:latest`
+- linux/arm/v7 → `ghcr.io/用户名/sbox-arm:latest`
 
 每次推送到main分支或创建新的版本标签时，都会自动构建并推送镜像到GitHub Container Registry。
-
-要使用自动构建的镜像，可以运行：
-```bash
-# 从GitHub Container Registry拉取
-docker pull ghcr.io/用户名/仓库名:latest
-```
 
 ## 注意事项
 

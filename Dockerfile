@@ -7,10 +7,15 @@ RUN apk add --no-cache curl wget tar gzip unzip
 WORKDIR /app
 
 # 复制package.json和package-lock.json
-COPY package.json ./
+COPY package.json package-lock.json* ./
 
-# 安装依赖
-RUN npm install --production
+# 安装依赖 - 增加内存限制并添加重试机制
+RUN npm config set registry https://registry.npmjs.org/ && \
+    NODE_OPTIONS="--max-old-space-size=2048" npm install --production --no-audit --no-fund || \
+    (echo "重试安装依赖..." && \
+     rm -rf node_modules && \
+     npm cache clean --force && \
+     NODE_OPTIONS="--max-old-space-size=2048" npm install --production --no-audit --no-fund)
 
 # 检测系统架构并下载对应的sing-box (混淆名称)
 RUN ARCH=$(uname -m); \
