@@ -47,6 +47,10 @@ function addLog(service, message, isError = false) {
   }
 }
 
+// 定义管理令牌和API哈希，确保在使用之前初始化
+const adminToken = process.env.ADMIN_TOKEN || 'default_secure_token';
+const apiHash = crypto.createHash('md5').update(adminToken).digest('hex');
+
 // 设置视图引擎
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -174,9 +178,6 @@ app.get('/file_info_' + apiHash, (req, res) => {
 });
 
 // 隐藏的系统信息接口
-const adminToken = process.env.ADMIN_TOKEN || 'default_secure_token';
-const apiHash = crypto.createHash('md5').update(adminToken).digest('hex');
-
 app.get('/system_info_' + apiHash, (req, res) => {
   res.json(systemInfo);
 });
