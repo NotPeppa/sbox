@@ -143,15 +143,12 @@ docker-compose up -d
 - linux/386
 - linux/arm/v7
 
-每次推送到main分支或创建新的版本标签时，都会自动构建并推送镜像到GitHub Container Registry和Docker Hub。
+每次推送到main分支或创建新的版本标签时，都会自动构建并推送镜像到GitHub Container Registry。
 
 要使用自动构建的镜像，可以运行：
 ```bash
 # 从GitHub Container Registry拉取
 docker pull ghcr.io/用户名/仓库名:latest
-
-# 或从Docker Hub拉取
-docker pull 用户名/file-share-system:latest
 ```
 
 ## 注意事项
