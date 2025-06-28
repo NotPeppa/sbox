@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文件云分享系统</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="d-flex flex-wrap justify-content-center py-3 mb-4 border-bottom">
+      <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-dark text-decoration-none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-cloud-arrow-up me-2" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z"/>
+          <path d="M4.406 3.342A5.53 5.53 0 0 1 8 2c2.69 0 4.923 2 5.166 4.579C14.758 6.804 16 8.137 16 9.773 16 11.569 14.502 13 12.687 13H3.781C1.708 13 0 11.366 0 9.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
+        </svg>
+        <span class="fs-4">文件云分享系统</span>
+      </a>
+      <nav class="nav nav-pills">
+        <a class="nav-link active" href="/">首页</a>
+        <a class="nav-link" href="/upload">上传文件</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="p-5 mb-4 bg-light rounded-3">
+        <div class="container-fluid py-5">
+          <h1 class="display-5 fw-bold">简单、安全的文件分享</h1>
+          <p class="col-md-8 fs-4">上传您的文件，获取分享链接，与他人共享您的内容。支持各种文件格式，最大50MB。</p>
+          <a href="/upload" class="btn btn-primary btn-lg">立即上传</a>
+        </div>
+      </div>
+
+      <h2 class="mb-4">最近上传的文件</h2>
+      
+      <% if (files && files.length > 0) { %>
+        <div class="table-responsive">
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>文件名</th>
+                <th>大小</th>
+                <th>类型</th>
+                <th>上传时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% files.forEach(file => { %>
+                <tr>
+                  <td><%= file.name %></td>
+                  <td><%= formatFileSize(file.size) %></td>
+                  <td><%= file.type %></td>
+                  <td><%= new Date(file.uploadDate).toLocaleString() %></td>
+                  <td>
+                    <a href="/download/<%= file.id %>" class="btn btn-sm btn-primary">下载</a>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="alert alert-info">
+          目前没有上传的文件。<a href="/upload">上传一个文件</a>开始分享吧！
+        </div>
+      <% } %>
+    </main>
+
+    <footer class="pt-5 my-5 text-muted border-top">
+      &copy; 2023 文件云分享系统
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+  </script>
+</body>
+</html> 

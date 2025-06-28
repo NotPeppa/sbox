@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上传文件 - 文件云分享系统</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="d-flex flex-wrap justify-content-center py-3 mb-4 border-bottom">
+      <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-dark text-decoration-none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-cloud-arrow-up me-2" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z"/>
+          <path d="M4.406 3.342A5.53 5.53 0 0 1 8 2c2.69 0 4.923 2 5.166 4.579C14.758 6.804 16 8.137 16 9.773 16 11.569 14.502 13 12.687 13H3.781C1.708 13 0 11.366 0 9.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
+        </svg>
+        <span class="fs-4">文件云分享系统</span>
+      </a>
+      <nav class="nav nav-pills">
+        <a class="nav-link" href="/">首页</a>
+        <a class="nav-link active" href="/upload">上传文件</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="mb-0">上传新文件</h2>
+            </div>
+            <div class="card-body">
+              <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                <div class="mb-3">
+                  <label for="file" class="form-label">选择文件</label>
+                  <input class="form-control" type="file" id="file" name="file" required>
+                  <div class="form-text">最大文件大小: 50MB</div>
+                </div>
+                
+                <div class="progress mb-3 d-none" id="uploadProgress">
+                  <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="uploadButton">上传文件</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="pt-5 my-5 text-muted border-top">
+      &copy; 2023 文件云分享系统
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+      const fileInput = document.getElementById('file');
+      const uploadButton = document.getElementById('uploadButton');
+      const progressBar = document.getElementById('uploadProgress');
+      const progressBarInner = progressBar.querySelector('.progress-bar');
+      
+      if (fileInput.files.length === 0) {
+        e.preventDefault();
+        alert('请选择一个文件上传');
+        return;
+      }
+      
+      const file = fileInput.files[0];
+      if (file.size > 50 * 1024 * 1024) { // 50MB
+        e.preventDefault();
+        alert('文件大小超过50MB限制');
+        return;
+      }
+      
+      uploadButton.disabled = true;
+      progressBar.classList.remove('d-none');
+      
+      // 模拟上传进度
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 5;
+        if (progress >= 100) {
+          clearInterval(interval);
+        }
+        progressBarInner.style.width = progress + '%';
+        progressBarInner.setAttribute('aria-valuenow', progress);
+        progressBarInner.textContent = progress + '%';
+      }, 200);
+    });
+  </script>
+</body>
+</html> 

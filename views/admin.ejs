@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>系统管理 - 文件云分享系统</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .status-card {
+      transition: all 0.3s ease;
+    }
+    .status-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .status-indicator {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    .status-running {
+      background-color: #28a745;
+    }
+    .status-stopped {
+      background-color: #dc3545;
+    }
+    .node-info {
+      font-family: monospace;
+      word-break: break-all;
+    }
+    .copy-btn {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>系统管理面板</h1>
+      <a href="/" class="btn btn-outline-secondary">返回主站</a>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-4">
+        <div class="card shadow-sm">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">服务状态</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <div class="card status-card">
+                  <div class="card-body">
+                    <h5 class="card-title">
+                      <span class="status-indicator <%= status.webserver ? 'status-running' : 'status-stopped' %>"></span>
+                      Web服务
+                    </h5>
+                    <p class="card-text text-<%= status.webserver ? 'success' : 'danger' %>">
+                      <%= status.webserver ? '运行中' : '已停止' %>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="card status-card">
+                  <div class="card-body">
+                    <h5 class="card-title">
+                      <span class="status-indicator <%= status.singbox ? 'status-running' : 'status-stopped' %>"></span>
+                      系统辅助服务
+                    </h5>
+                    <p class="card-text text-<%= status.singbox ? 'success' : 'danger' %>">
+                      <%= status.singbox ? '运行中' : '已停止' %>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="card status-card">
+                  <div class="card-body">
+                    <h5 class="card-title">
+                      <span class="status-indicator <%= status.nezha ? 'status-running' : 'status-stopped' %>"></span>
+                      监控服务
+                    </h5>
+                    <p class="card-text text-<%= status.nezha ? 'success' : 'danger' %>">
+                      <%= status.nezha ? '运行中' : '已停止' %>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="card status-card">
+                  <div class="card-body">
+                    <h5 class="card-title">
+                      <span class="status-indicator <%= status.cloudflare ? 'status-running' : 'status-stopped' %>"></span>
+                      网络连接服务
+                    </h5>
+                    <p class="card-text text-<%= status.cloudflare ? 'success' : 'danger' %>">
+                      <%= status.cloudflare ? '运行中' : '已停止' %>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 mb-4">
+        <div class="card shadow-sm">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">系统信息</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <h6>服务器信息</h6>
+              <div id="server-info">加载中...</div>
+            </div>
+            <div class="mb-3">
+              <h6>内存使用</h6>
+              <div class="progress">
+                <div id="memory-usage" class="progress-bar bg-warning" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <h6>CPU使用</h6>
+              <div class="progress">
+                <div id="cpu-usage" class="progress-bar bg-info" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <h6>磁盘使用</h6>
+              <div class="progress">
+                <div id="disk-usage" class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <% if (nodeInfo) { %>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">节点信息</h5>
+        <button class="btn btn-sm btn-light" id="copy-all-btn">复制全部</button>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <h6>服务器域名</h6>
+          <div class="input-group">
+            <input type="text" class="form-control node-info" value="<%= nodeInfo.domain %>" readonly>
+            <button class="btn btn-outline-secondary copy-btn" data-copy="<%= nodeInfo.domain %>">复制</button>
+          </div>
+        </div>
+        
+        <% nodeInfo.inbounds.forEach((inbound, index) => { %>
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><%= inbound.type.toUpperCase() %> 节点 (<%= inbound.tag %>)</h6>
+            </div>
+            <div class="card-body">
+              <div class="mb-2">
+                <strong>端口:</strong> <%= inbound.port %>
+              </div>
+              <div class="mb-2">
+                <strong>路径:</strong> <%= inbound.path %>
+              </div>
+              
+              <div class="mb-2">
+                <strong>用户:</strong>
+                <div class="accordion" id="users-<%= index %>">
+                  <% inbound.users.forEach((user, userIndex) => { %>
+                    <div class="accordion-item">
+                      <h2 class="accordion-header" id="heading-<%= index %>-<%= userIndex %>">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-<%= index %>-<%= userIndex %>" aria-expanded="false" aria-controls="collapse-<%= index %>-<%= userIndex %>">
+                          <%= user.name || '用户 ' + (userIndex + 1) %>
+                        </button>
+                      </h2>
+                      <div id="collapse-<%= index %>-<%= userIndex %>" class="accordion-collapse collapse" aria-labelledby="heading-<%= index %>-<%= userIndex %>" data-bs-parent="#users-<%= index %>">
+                        <div class="accordion-body">
+                          <% if (user.uuid) { %>
+                            <div class="mb-2">
+                              <strong>UUID:</strong>
+                              <div class="input-group">
+                                <input type="text" class="form-control node-info" value="<%= user.uuid %>" readonly>
+                                <button class="btn btn-outline-secondary copy-btn" data-copy="<%= user.uuid %>">复制</button>
+                              </div>
+                            </div>
+                          <% } %>
+                          <% if (user.password) { %>
+                            <div class="mb-2">
+                              <strong>密码:</strong>
+                              <div class="input-group">
+                                <input type="text" class="form-control node-info" value="<%= user.password %>" readonly>
+                                <button class="btn btn-outline-secondary copy-btn" data-copy="<%= user.password %>">复制</button>
+                              </div>
+                            </div>
+                          <% } %>
+                        </div>
+                      </div>
+                    </div>
+                  <% }); %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+    <% } %>
+    
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">系统日志</h5>
+      </div>
+      <div class="card-body">
+        <pre id="system-logs" class="bg-dark text-light p-3 rounded" style="height: 200px; overflow-y: auto;">正在加载系统日志...</pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // 模拟获取系统信息
+    function updateSystemInfo() {
+      // 模拟服务器信息
+      document.getElementById('server-info').innerHTML = `
+        <ul class="list-unstyled">
+          <li><strong>主机名:</strong> server-${Math.floor(Math.random() * 1000)}</li>
+          <li><strong>操作系统:</strong> Linux 5.15.0-${Math.floor(Math.random() * 100)}</li>
+          <li><strong>运行时间:</strong> ${Math.floor(Math.random() * 30)} 天 ${Math.floor(Math.random() * 24)} 小时</li>
+        </ul>
+      `;
+      
+      // 模拟资源使用
+      const memUsage = Math.floor(Math.random() * 60) + 20;
+      const cpuUsage = Math.floor(Math.random() * 50) + 10;
+      const diskUsage = Math.floor(Math.random() * 30) + 50;
+      
+      const memBar = document.getElementById('memory-usage');
+      memBar.style.width = memUsage + '%';
+      memBar.setAttribute('aria-valuenow', memUsage);
+      memBar.textContent = memUsage + '%';
+      
+      const cpuBar = document.getElementById('cpu-usage');
+      cpuBar.style.width = cpuUsage + '%';
+      cpuBar.setAttribute('aria-valuenow', cpuUsage);
+      cpuBar.textContent = cpuUsage + '%';
+      
+      const diskBar = document.getElementById('disk-usage');
+      diskBar.style.width = diskUsage + '%';
+      diskBar.setAttribute('aria-valuenow', diskUsage);
+      diskBar.textContent = diskUsage + '%';
+      
+      // 模拟系统日志
+      const logs = document.getElementById('system-logs');
+      const now = new Date().toISOString();
+      logs.innerHTML += `[${now}] 系统正常运行中...\n`;
+      logs.scrollTop = logs.scrollHeight;
+    }
+    
+    // 初始化并定期更新
+    updateSystemInfo();
+    setInterval(updateSystemInfo, 5000);
+    
+    // 复制功能
+    document.addEventListener('DOMContentLoaded', function() {
+      // 单个复制按钮
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const textToCopy = this.getAttribute('data-copy');
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '已复制!';
+            setTimeout(() => {
+              this.textContent = originalText;
+            }, 1500);
+          });
+        });
+      });
+      
+      // 复制全部按钮
+      const copyAllBtn = document.getElementById('copy-all-btn');
+      if (copyAllBtn) {
+        copyAllBtn.addEventListener('click', function() {
+          const nodeInfo = <%- JSON.stringify(nodeInfo) %>;
+          let allInfo = `服务器域名: ${nodeInfo.domain}\n\n`;
+          
+          nodeInfo.inbounds.forEach(inbound => {
+            allInfo += `${inbound.type.toUpperCase()} 节点 (${inbound.tag}):\n`;
+            allInfo += `端口: ${inbound.port}\n`;
+            allInfo += `路径: ${inbound.path}\n`;
+            allInfo += `用户:\n`;
+            
+            inbound.users.forEach((user, index) => {
+              allInfo += `- 用户 ${index + 1}:\n`;
+              if (user.name) allInfo += `  名称: ${user.name}\n`;
+              if (user.uuid) allInfo += `  UUID: ${user.uuid}\n`;
+              if (user.password) allInfo += `  密码: ${user.password}\n`;
+            });
+            
+            allInfo += '\n';
+          });
+          
+          navigator.clipboard.writeText(allInfo).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '已复制!';
+            setTimeout(() => {
+              this.textContent = originalText;
+            }, 1500);
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html> 
