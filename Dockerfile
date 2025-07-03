@@ -52,39 +52,8 @@ RUN cd /tmp && \
     rm -rf /tmp/*
 
 # 创建data-collector脚本
-RUN echo '#!/bin/bash
-cd "$(dirname "$0")" || exit 1
-
-# 配置文件路径 - 使用更隐蔽的名称
-CONFIG_FILE="../config/monitor.conf"
-
-# 从环境变量获取配置，如果没有则使用默认值
-NEZHA_SERVER=${DATA_REPORT_HOST:-"nezha.example.com"}
-NEZHA_PORT=${DATA_REPORT_PORT:-"5555"}
-NEZHA_KEY=${DATA_REPORT_KEY:-"defaultkey123456789"}
-
-# 生成配置文件
-cat > "$CONFIG_FILE" << EOF
-client_secret: ${NEZHA_KEY}
-debug: false
-disable_auto_update: false
-disable_command_execute: false
-disable_force_update: false
-disable_nat: false
-disable_send_query: false
-gpu: false
-insecure_tls: false
-ip_report_period: 1800
-report_delay: 1
-server: ${NEZHA_SERVER}:${NEZHA_PORT}
-skip_connection_count: false
-skip_procs_count: false
-temperature: false
-tls: false
-use_gitee_to_upgrade: false
-use_ipv6_country_code: false
-uuid: $(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "$(date +%s)$(head -c 4 /dev/urandom | od -t x1 | head -n1 | cut -d'\'' '\'' -f2- | tr -d '\'' '\'')")\nEOF\n\necho "生成配置文件: $CONFIG_FILE"\necho "服务器地址: ${NEZHA_SERVER}:${NEZHA_PORT}"\necho "启动监控服务..."\n\n# 启动Agent\n./agent-core -c "$CONFIG_FILE" "$@"' > /app/bin/data-collector && \
-    chmod +x /app/bin/data-collector
+COPY bin/data-collector /app/bin/data-collector
+RUN chmod +x /app/bin/data-collector
 
 # 设置权限
 RUN chmod +x /app/entrypoint.sh

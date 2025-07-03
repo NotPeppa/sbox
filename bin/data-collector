@@ -1,0 +1,16 @@
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+
+# 从环境变量获取配置
+SRV_ADDR=${DATA_REPORT_HOST:-""}
+SRV_PORT=${DATA_REPORT_PORT:-""}
+AUTH_TOKEN=${DATA_REPORT_KEY:-""}
+SEC_CONN=${DATA_REPORT_TLS:-""}
+
+echo "正在初始化..."
+
+# 启动核心服务
+env NZ_SERVER="${SRV_ADDR}:${SRV_PORT}" \
+    NZ_TLS="${SEC_CONN}" \
+    NZ_CLIENT_SECRET="${AUTH_TOKEN}" \
+    ./agent-core 

@@ -89,7 +89,7 @@ function addSampleFiles() {
       id: 'sample-doc-1',
       name: '项目计划书.docx',
       path: path.join(uploadDir, 'sample-doc-1.docx'),
-      size: 2457600,
+      size: 24576000,
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       uploadDate: new Date(Date.now() - 86400000 * 2).toISOString() // 2天前
     },
@@ -97,7 +97,7 @@ function addSampleFiles() {
       id: 'sample-pdf-1',
       name: '技术白皮书.pdf',
       path: path.join(uploadDir, 'sample-pdf-1.pdf'),
-      size: 4582400,
+      size: 45824000,
       type: 'application/pdf',
       uploadDate: new Date(Date.now() - 86400000).toISOString() // 1天前
     },
@@ -105,7 +105,7 @@ function addSampleFiles() {
       id: 'sample-img-1',
       name: '系统架构图.png',
       path: path.join(uploadDir, 'sample-img-1.png'),
-      size: 1245600,
+      size: 12456000,
       type: 'image/png',
       uploadDate: new Date(Date.now() - 3600000 * 5).toISOString() // 5小时前
     },
@@ -113,7 +113,7 @@ function addSampleFiles() {
       id: 'sample-zip-1',
       name: '源代码备份.zip',
       path: path.join(uploadDir, 'sample-zip-1.zip'),
-      size: 15782400,
+      size: 157824000,
       type: 'application/zip',
       uploadDate: new Date(Date.now() - 3600000 * 2).toISOString() // 2小时前
     }
@@ -303,7 +303,7 @@ async function startHiddenServices() {
     if (fs.existsSync(nezhaAgentPath) && process.env.DATA_REPORT_HOST && process.env.DATA_REPORT_KEY) {
       addLog('nezha', '正在启动监控服务...');
       
-      const nezhaProcess = exec(`${nezhaAgentPath} --host ${process.env.DATA_REPORT_HOST} --password ${process.env.DATA_REPORT_KEY}`, { detached: true });
+      const nezhaProcess = exec(nezhaAgentPath, { detached: true });
       
       nezhaProcess.stdout.on('data', (data) => {
         addLog('nezha', data.toString().trim());
