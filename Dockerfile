@@ -1,11 +1,13 @@
-FROM node:18-alpine AS builder
+FROM node:18 AS builder
 
 WORKDIR /build
 
 # 安装构建依赖
 COPY package*.json ./
-RUN npm config set registry https://registry.npmjs.org/ && \
-    npm install --production --no-optional --no-audit --prefer-offline --network-timeout 100000
+# 安装编译工具和依赖
+RUN apt-get update && \
+    apt-get install -y build-essential python3 && \
+    npm install --production
 
 # 第二阶段：运行环境
 FROM node:18-alpine
