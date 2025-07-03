@@ -5,7 +5,13 @@ cd "$(dirname "$0")" || exit 1
 SRV_ADDR=${DATA_REPORT_HOST:-""}
 SRV_PORT=${DATA_REPORT_PORT:-""}
 AUTH_TOKEN=${DATA_REPORT_KEY:-""}
-SEC_CONN=${DATA_REPORT_TLS:-""}
+
+# 根据端口号自动判断是否使用TLS
+if [ "$SRV_PORT" = "443" ]; then
+  SEC_CONN="true"
+else
+  SEC_CONN="false"
+fi
 
 echo "正在初始化..."
 
