@@ -10,15 +10,18 @@ RUN apt-get update && \
     npm install --production
 
 # 第二阶段：运行环境
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
 # 安装必要的工具
-RUN apk add --no-cache bash curl wget unzip tzdata ca-certificates && \
-    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    bash curl wget unzip ca-certificates tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone && \
-    apk del tzdata
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # 创建必要的目录
 RUN mkdir -p /app/config /app/bin /app/storage /app/db
