@@ -4,7 +4,8 @@ WORKDIR /build
 
 # 安装构建依赖
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm install --production --no-optional --no-audit --prefer-offline --network-timeout 100000
 
 # 第二阶段：运行环境
 FROM node:18-alpine
